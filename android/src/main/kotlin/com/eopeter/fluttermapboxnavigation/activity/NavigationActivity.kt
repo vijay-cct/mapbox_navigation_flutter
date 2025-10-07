@@ -6,8 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.location.Location
 import android.os.Bundle
-
-import org.json.JSONObject
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin
 import com.eopeter.fluttermapboxnavigation.R
@@ -26,7 +25,6 @@ import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
 import com.mapbox.maps.plugin.gestures.OnMapLongClickListener
-import com.mapbox.maps.plugin.gestures.OnMapClickListener
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.extensions.applyLanguageAndVoiceUnitOptions
@@ -37,6 +35,8 @@ import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.base.route.RouterOrigin
 import com.mapbox.navigation.base.trip.model.RouteLegProgress
 import com.mapbox.navigation.base.trip.model.RouteProgress
+import com.mapbox.navigation.base.trip.model.RouteProgressState
+import com.mapbox.navigation.core.MapboxNavigation
 import com.mapbox.navigation.core.arrival.ArrivalObserver
 import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
@@ -59,6 +59,8 @@ class NavigationActivity : AppCompatActivity() {
     private var accessToken: String? = null
     private var lastLocation: Location? = null
     private var isNavigationInProgress = false
+
+    private lateinit var mapboxNavigation: MapboxNavigation
 
     private val navigationStateListener = object : NavigationViewListener() {
         override fun onFreeDrive() {
@@ -84,11 +86,10 @@ class NavigationActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTheme(R.style.Theme_AppCompat_NoActionBar)
+        setTheme(R.style.AppTheme)
         binding = NavigationActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.navigationView.addListener(navigationStateListener)
-        binding.navigationView.registerMapObserver(onMapClick)
         accessToken =
             PluginUtilities.getResourceFromContext(this.applicationContext, "mapbox_access_token")
 
@@ -107,9 +108,6 @@ class NavigationActivity : AppCompatActivity() {
             }
         }
 
-        if (FlutterMapboxNavigationPlugin.enableOnMapTapCallback) {
-            binding.navigationView.registerMapObserver(onMapClick)
-        }
         val act = this
         // Add custom view binders
         binding.navigationView.customizeViewBinders {
@@ -188,9 +186,6 @@ class NavigationActivity : AppCompatActivity() {
         super.onDestroy()
         if (FlutterMapboxNavigationPlugin.longPressDestinationEnabled) {
             binding.navigationView.unregisterMapObserver(onMapLongClick)
-        }
-        if (FlutterMapboxNavigationPlugin.enableOnMapTapCallback) {
-            binding.navigationView.unregisterMapObserver(onMapClick)
         }
         binding.navigationView.removeListener(navigationStateListener)
 
@@ -360,6 +355,24 @@ class NavigationActivity : AppCompatActivity() {
         FlutterMapboxNavigationPlugin.distanceRemaining = routeProgress.distanceRemaining
         FlutterMapboxNavigationPlugin.durationRemaining = routeProgress.durationRemaining
         sendEvent(progressEvent)
+
+        if (routeProgress.currentState == RouteProgressState.OFF_ROUTE) {
+            val alternativeId = routeProgress.routeAlternativeId
+            Log.d("OffRoute", "User is off-route! Alternative route ID: $alternativeId")
+
+            // Get all current routes
+           // val currentRoutes = mapboxNavigation.navigationRoutes
+
+            // Find matching route by ID
+           // val matchingRoute = currentRoutes.find { it.id == alternativeId }
+
+//            if (matchingRoute != null) {
+//                Log.d("SwitchRoute", "Switching to matching alternative route ID: ${matchingRoute.id}")
+//                mapboxNavigation.setNavigationRoutes(listOf(matchingRoute))
+//            } else {
+//                Log.w("SwitchRoute", "No matching alternative route found for ID: $alternativeId")
+//            }
+        }
     }
 
     private val arrivalObserver: ArrivalObserver = object : ArrivalObserver {
@@ -433,29 +446,6 @@ class NavigationActivity : AppCompatActivity() {
                 waypointSet.add(Waypoint(point))
                 requestRoutes(waypointSet)
             }
-            return false
-        }
-    }
-
-    /**
-     * Notifies with attach and detach events on [MapView]
-     */
-    private val onMapClick = object : MapViewObserver(), OnMapClickListener {
-
-        override fun onAttached(mapView: MapView) {
-            mapView.gestures.addOnMapClickListener(this)
-        }
-
-        override fun onDetached(mapView: MapView) {
-            mapView.gestures.removeOnMapClickListener(this)
-        }
-
-        override fun onMapClick(point: Point): Boolean {
-            var waypoint = mapOf<String, String>(
-                Pair("latitude", point.latitude().toString()),
-                Pair("longitude", point.longitude().toString())
-            )
-            sendEvent(MapBoxEvents.ON_MAP_TAP, JSONObject(waypoint).toString())
             return false
         }
     }

@@ -1,14 +1,19 @@
+plugins {
+    id "com.android.application"
+    // START: FlutterFire Configuration
+    //id 'com.google.gms.google-services'
+    //id 'com.google.firebase.crashlytics'
+    // END: FlutterFire Configuration
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
     localPropertiesFile.withReader('UTF-8') { reader ->
         localProperties.load(reader)
     }
-}
-
-def flutterRoot = localProperties.getProperty('flutter.sdk')
-if (flutterRoot == null) {
-    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
 }
 
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
@@ -21,26 +26,23 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-
 android {
-    compileSdkVersion 33
-    ndkVersion flutter.ndkVersion
-
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
-
+    namespace "com.eopeter.fluttermapboxnavigationexample"
+    compileSdkVersion 35
+    ndkVersion = '27.0.12077973'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
     }
 
     defaultConfig {
@@ -48,8 +50,8 @@ android {
         applicationId "com.eopeter.fluttermapboxnavigationexample"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdkVersion 21
-        targetSdkVersion 33
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -61,10 +63,8 @@ android {
             signingConfig signingConfigs.debug
         }
     }
-    lint {
-        disable 'InvalidPackage'
-    }
-    namespace 'com.eopeter.fluttermapboxnavigationexample'
+
+
 }
 
 flutter {
@@ -72,6 +72,9 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation platform("org.jetbrains.kotlin:kotlin-bom:1.8.0")
+    // For AGP 7.4+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    //for google ads
+    //implementation("com.google.android.gms:play-services-ads:24.5.0")
+
 }

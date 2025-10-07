@@ -8,6 +8,7 @@ import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import androidx.lifecycle.LifecycleOwner
+import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin.Companion.eventSink
 import com.eopeter.fluttermapboxnavigation.databinding.NavigationActivityBinding
 import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.eopeter.fluttermapboxnavigation.models.MapBoxRouteProgressEvent
@@ -29,6 +30,7 @@ import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.base.route.RouterOrigin
 import com.mapbox.navigation.base.trip.model.RouteLegProgress
 import com.mapbox.navigation.base.trip.model.RouteProgress
+import com.mapbox.navigation.base.trip.model.RouteProgressState
 import com.mapbox.navigation.core.arrival.ArrivalObserver
 import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
@@ -46,6 +48,8 @@ open class TurnByTurn(
 ) : MethodChannel.MethodCallHandler,
     EventChannel.StreamHandler,
     Application.ActivityLifecycleCallbacks {
+
+
 
     open fun initFlutterChannelHandlers() {
         this.methodChannel?.setMethodCallHandler(this)
@@ -111,8 +115,7 @@ open class TurnByTurn(
             val point = item.value as HashMap<*, *>
             val latitude = point["Latitude"] as Double
             val longitude = point["Longitude"] as Double
-            val isSilent = point["IsSilent"] as Boolean
-            this.addedWaypoints.add(Waypoint(Point.fromLngLat(longitude, latitude),isSilent))
+            this.addedWaypoints.add(Waypoint(Point.fromLngLat(longitude, latitude)))
         }
         this.getRoute(this.context)
         result.success(true)
@@ -312,11 +315,6 @@ open class TurnByTurn(
         if (longPress != null) {
             this.longPressDestinationEnabled = longPress
         }
-
-        val onMapTap = arguments["enableOnMapTapCallback"] as? Boolean
-        if (onMapTap != null) {
-            this.enableOnMapTapCallback = onMapTap
-        }
     }
 
     open fun registerObservers() {
@@ -386,7 +384,6 @@ open class TurnByTurn(
     private var voiceInstructionsEnabled = true
     private var bannerInstructionsEnabled = true
     private var longPressDestinationEnabled = true
-    private var enableOnMapTapCallback = false
     private var animateBuildRoute = true
     private var isOptimized = false
 
@@ -447,6 +444,17 @@ open class TurnByTurn(
 
                 val progressEvent = MapBoxRouteProgressEvent(routeProgress)
                 PluginUtilities.sendEvent(progressEvent)
+                if(routeProgress.currentState == RouteProgressState.OFF_ROUTE) {
+                    val isOffRoute = routeProgress.currentState == RouteProgressState.OFF_ROUTE
+                    var isOfftorute = true
+                    val eventData = HashMap<String, Any>()
+                    eventData["offRoute"] = isOfftorute
+                    eventSink?.success(eventData)
+                    PluginUtilities.sendEvent(MapBoxEvents.USER_OFF_ROUTE, "true")
+                } else {
+                    // isOfftorute = false
+                }
+                //event.putBoolean("Offroute", isOfftorute)
             } catch (_: java.lang.Exception) {
                 // handle this error
             }

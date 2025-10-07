@@ -5,11 +5,17 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.annotation.NonNull
 import com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher
 import com.eopeter.fluttermapboxnavigation.factory.EmbeddedNavigationViewFactory
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
 import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
+import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.base.trip.model.RouteProgress
+import com.mapbox.navigation.base.trip.model.RouteProgressState
+import com.mapbox.navigation.core.MapboxNavigation
+import com.mapbox.navigation.core.trip.session.RouteProgressObserver
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -30,16 +36,46 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
     private var currentActivity: Activity? = null
     private lateinit var currentContext: Context
 
+    private var eventSink: EventChannel.EventSink? = null
+    private lateinit var mapboxNavigation: MapboxNavigation
+    private lateinit var context: Context
+
+    private var isOffRoute = false
+    private var latestRouteProgress: RouteProgress? = null
+
+    private val routeProgressObserver = RouteProgressObserver { routeProgress ->
+        latestRouteProgress = routeProgress
+
+    }
+
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        val messenger = binding.binaryMessenger
-        channel = MethodChannel(messenger, "flutter_mapbox_navigation")
-        channel.setMethodCallHandler(this)
+//        val messenger = binding.binaryMessenger
+//        channel = MethodChannel(messenger, "flutter_mapbox_navigation")
+//        channel.setMethodCallHandler(this)
+//
+//        progressEventChannel = EventChannel(messenger, "flutter_mapbox_navigation/events")
+//        progressEventChannel.setStreamHandler(this)
+//
+//        platformViewRegistry = binding.platformViewRegistry
+//        binaryMessenger = messenger
 
-        progressEventChannel = EventChannel(messenger, "flutter_mapbox_navigation/events")
-        progressEventChannel.setStreamHandler(this)
+        try {
+            val messenger = binding.binaryMessenger
+            channel = MethodChannel(messenger, "flutter_mapbox_navigation")
+            channel.setMethodCallHandler(this)
 
-        platformViewRegistry = binding.platformViewRegistry
-        binaryMessenger = messenger
+            progressEventChannel = EventChannel(messenger, "flutter_mapbox_navigation/events")
+            progressEventChannel.setStreamHandler(this)
+
+            platformViewRegistry = binding.platformViewRegistry
+            binaryMessenger = messenger
+
+
+            // mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
+        }catch (e: Exception){
+            e.printStackTrace()
+        }
+
 
 
     }
@@ -57,7 +93,6 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         var showAlternateRoutes: Boolean = true
         var longPressDestinationEnabled: Boolean = true
         var allowsUTurnsAtWayPoints: Boolean = false
-        var enableOnMapTapCallback: Boolean = false
         var navigationMode = DirectionsCriteria.PROFILE_DRIVING_TRAFFIC
         var simulateRoute = false
         var enableFreeDriveMode = false
@@ -106,7 +141,60 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             "enableOfflineRouting" -> {
                 downloadRegionForOfflineRouting(call, result)
             }
+            "getAlternativeRouteId" -> {
+                val altId = getAlternativeRouteIdFromProgress()
+                result.success(altId)
+            }
+            "getAllRouteIds" -> {
+                // val routeIds = getAllRouteIds()
+                //result.success(routeIds)
+            }
+            "switchToRouteById" -> {
+                //val routeId = call.argument<String>("routeId")
+                //val switched = switchToRouteById(routeId)
+                // result.success(switched)
+            }
+            "startNavigation" -> {
+                startNavigation(call, result)
+            }
             else -> result.notImplemented()
+        }
+    }
+
+    private fun startNavigation(@NonNull call: MethodCall, @NonNull result: Result) {
+        val accessToken = call.argument<String>("sk.eyJ1IjoiZGVuaXNoYSIsImEiOiJjbWVpODgxMGMwNjU5MnNzZGtreWNqcmJxIn0.rsX7ordcjGoghRdtc1kb5Q") ?: run {
+            result.error("NO_ACCESS_TOKEN", "Access token is required", null)
+            return
+        }
+
+        if (mapboxNavigation == null) {
+            mapboxNavigation = MapboxNavigation(
+                NavigationOptions.Builder(context)
+                    .accessToken(accessToken)
+                    .build()
+            )
+        }
+
+        // 🚀 Start trip session
+        // mapboxNavigation?.startTripSession()
+
+        // ✅ Set dummy routes just for example (normally you'd parse from call)
+        //val routes = listOf<NavigationRoute>() // You need to load real route here
+        // mapboxNavigation?.setRoutes(routes)
+
+        // ✅ Register route progress observer AFTER trip session + route is set
+        mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
+
+        result.success(null)
+    }
+
+    private fun getAlternativeRouteIdFromProgress(): String? {
+        return latestRouteProgress?.let { progress ->
+            if (progress.currentState == RouteProgressState.OFF_ROUTE) {
+                progress.routeAlternativeId
+            } else {
+                null
+            }
         }
     }
 
@@ -144,11 +232,6 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         val allowsUTurns = arguments?.get("allowsUTurnsAtWayPoints") as? Boolean
         if (allowsUTurns != null) {
             allowsUTurnsAtWayPoints = allowsUTurns
-        }
-
-        val onMapTap = arguments?.get("enableOnMapTapCallback") as? Boolean
-        if (onMapTap != null) {
-            enableOnMapTapCallback = onMapTap
         }
 
         val language = arguments?.get("language") as? String
