@@ -3,7 +3,7 @@ version '1.0-SNAPSHOT'
  
 buildscript {
     ext.kotlin_version = '2.1.0'
-    ext.android_gradle_version = '8.1.1'
+    ext.android_gradle_version = '8.7.0'
     repositories {
         google()
         mavenCentral()
@@ -15,10 +15,10 @@ buildscript {
             }
             credentials {
                 username = "mapbox"
-                password="sk.eyJ1IjoiZGVuaXNoYSIsImEiOiJjbWVpODgxMGMwNjU5MnNzZGtreWNqcmJxIn0.rsX7ordcjGoghRdtc1kb5Q"
-                // password = project.hasProperty('MAPBOX_DOWNLOADS_TOKEN') 
-                //     ? project.property('MAPBOX_DOWNLOADS_TOKEN') 
-                //     : System.getenv('MAPBOX_DOWNLOADS_TOKEN')
+                //password="sk.eyJ1IjoiZGVuaXNoYSIsImEiOiJjbWVpODgxMGMwNjU5MnNzZGtreWNqcmJxIn0.rsX7ordcjGoghRdtc1kb5Q"
+                password = project.hasProperty('MAPBOX_DOWNLOADS_TOKEN') 
+                    ? project.property('MAPBOX_DOWNLOADS_TOKEN') 
+                    : System.getenv('MAPBOX_DOWNLOADS_TOKEN')
             }
         }
     }
@@ -40,10 +40,10 @@ allprojects {
             }
             credentials {
                 username = "mapbox"
-                password="sk.eyJ1IjoiZGVuaXNoYSIsImEiOiJjbWVpODgxMGMwNjU5MnNzZGtreWNqcmJxIn0.rsX7ordcjGoghRdtc1kb5Q"
-                // password = project.hasProperty('MAPBOX_DOWNLOADS_TOKEN') 
-                //     ? project.property('MAPBOX_DOWNLOADS_TOKEN') 
-                //     : System.getenv('MAPBOX_DOWNLOADS_TOKEN')
+                //password="sk.eyJ1IjoiZGVuaXNoYSIsImEiOiJjbWVpODgxMGMwNjU5MnNzZGtreWNqcmJxIn0.rsX7ordcjGoghRdtc1kb5Q"
+                password = project.hasProperty('MAPBOX_DOWNLOADS_TOKEN') 
+                    ? project.property('MAPBOX_DOWNLOADS_TOKEN') 
+                    : System.getenv('MAPBOX_DOWNLOADS_TOKEN')
             }
         }
     }
@@ -54,12 +54,12 @@ apply plugin: 'kotlin-android'
  
 android {
     namespace 'com.eopeter.fluttermapboxnavigation'
-    compileSdkVersion 34
+    compileSdkVersion 36
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdkVersion 23
+        targetSdkVersion 36
         multiDexEnabled true
-        ndkVersion "27.0.12077973"
+        ndkVersion "28.0.12433566 rc1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
@@ -76,6 +76,7 @@ android {
         disable 'InvalidPackage'
         abortOnError false
     }
+    ndkVersion '28.0.12433566 rc1'
 }
  
 dependencies {
